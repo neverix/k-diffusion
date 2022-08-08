@@ -80,6 +80,7 @@ def kid(x, y, kernel=polynomial_kernel):
 class _MatrixSquareRootEig(torch.autograd.Function):
     @staticmethod
     def forward(ctx, a):
+        print(a)
         vals, vecs = torch.linalg.eigh(a)
         ctx.save_for_backward(vals, vecs)
         return vecs @ vals.abs().sqrt().diag_embed() @ vecs.transpose(-2, -1)

@@ -13,11 +13,13 @@ class ResConvBlock(layers.ConditionedResidualBlock):
         super().__init__(
             layers.AdaGN(feats_in, c_in, max(1, c_in // group_size)),
             nn.GELU(),
-            nn.Conv2d(c_in, c_mid, 3, padding=1),
+            layers.SharpCosSim2d(c_in, c_mid, 3, padding=1),
+            # nn.Conv2d(c_in, c_mid, 3, padding=1),
             nn.Dropout2d(dropout_rate, inplace=True),
             layers.AdaGN(feats_in, c_mid, max(1, c_mid // group_size)),
             nn.GELU(),
-            nn.Conv2d(c_mid, c_out, 3, padding=1),
+            # nn.Conv2d(c_mid, c_out, 3, padding=1),
+            layers.SharpCosSim2d(c_mid, c_out, 3, padding=1),
             nn.Dropout2d(dropout_rate, inplace=True),
             skip=skip)
 
@@ -95,8 +97,13 @@ class ImageDenoiserModelV1(nn.Module):
         self.mapping = MappingNet(feats_in, feats_in)
         self.proj_in = nn.Conv2d((c_in + unet_cond_dim) * self.patch_size ** 2, channels[max(0, skip_stages - 1)], 1)
         self.proj_out = nn.Conv2d(channels[max(0, skip_stages - 1)], c_in * self.patch_size ** 2, 1)
-        nn.init.zeros_(self.proj_out.weight)
-        nn.init.zeros_(self.proj_out.bias)
+        # self.proj_in = layers.SharpCosSim2d((c_in + unet_cond_dim) * self.patch_size ** 2, channels[max(0, skip_stages - 1)], 1)
+        # self.proj_out = layers.SharpCosSim2d(channels[max(0, skip_stages - 1)], c_in * self.patch_size ** 2, 1)
+        try:
+            nn.init.zeros_(self.proj_out.weight)
+            nn.init.zeros_(self.proj_out.bias)
+        except AttributeError:
+            pass
         if cross_cond_dim == 0:
             cross_attn_depths = [False] * len(self_attn_depths)
         d_blocks, u_blocks = [], []
@@ -132,6 +139,8 @@ class ImageDenoiserModelV1(nn.Module):
     def set_skip_stages(self, skip_stages):
         self.proj_in = nn.Conv2d(self.proj_in.in_channels, self.channels[max(0, skip_stages - 1)], 1)
         self.proj_out = nn.Conv2d(self.channels[max(0, skip_stages - 1)], self.proj_out.out_channels, 1)
+        # self.proj_in = layers.SharpCosSim2d(self.proj_in.in_channels, self.channels[max(0, skip_stages - 1)], 1)
+        # self.proj_out = layers.SharpCosSim2d(self.channels[max(0, skip_stages - 1)], self.proj_out.out_channels, 1)
         nn.init.zeros_(self.proj_out.weight)
         nn.init.zeros_(self.proj_out.bias)
         self.u_net.skip_stages = skip_stages
@@ -145,5 +154,7 @@ class ImageDenoiserModelV1(nn.Module):
         self.patch_size = patch_size
         self.proj_in = nn.Conv2d((self.c_in + self.unet_cond_dim) * self.patch_size ** 2, self.channels[max(0, self.u_net.skip_stages - 1)], 1)
         self.proj_out = nn.Conv2d(self.channels[max(0, self.u_net.skip_stages - 1)], self.c_in * self.patch_size ** 2, 1)
+        # self.proj_in = layers.SharpCosSim2d((self.c_in + self.unet_cond_dim) * self.patch_size ** 2, self.channels[max(0, self.u_net.skip_stages - 1)], 1)
+        # self.proj_out = layers.SharpCosSim2d(self.channels[max(0, self.u_net.skip_stages - 1)], self.c_in * self.patch_size ** 2, 1)
         nn.init.zeros_(self.proj_out.weight)
         nn.init.zeros_(self.proj_out.bias)

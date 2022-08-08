@@ -7,3 +7,7 @@ data
 *_demo_*.png
 wandb/*
 *.csv
+conv_nocossim/
+.idea/
+conv_nocossim/
+model_state.json
