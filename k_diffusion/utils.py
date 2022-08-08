@@ -5,6 +5,8 @@ from pathlib import Path
 import shutil
 import urllib
 import warnings
+from PIL import Image
+import io
 
 import torch
 from torch import optim
@@ -29,9 +31,11 @@ def to_pil_image(x):
     return TF.to_pil_image((x.clamp(-1, 1) + 1) / 2)
 
 
-def hf_datasets_augs_helper(examples, transform, image_key, mode='RGB'):
+def hf_datasets_augs_helper(examples, transform, image_key, mode="RGB"):
     """Apply passed in transforms for HuggingFace Datasets."""
-    images = [transform(image.convert(mode)) for image in examples[image_key]]
+    images = examples[image_key]
+    images = (Image.open(io.BytesIO(image["bytes"])) if isinstance(image, dict) else image for image in images)
+    images = [transform(image.convert(mode)) for image in images]
     return {image_key: images}
 
 
